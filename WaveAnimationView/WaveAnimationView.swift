@@ -8,6 +8,7 @@
 
 import UIKit
 
+@objcMembers
 public class WaveAnimationView: UIView {
 
     private let frontWaveLine: UIBezierPath = UIBezierPath()
@@ -15,6 +16,7 @@ public class WaveAnimationView: UIView {
     
     private let frontWaveLayer: CAShapeLayer = CAShapeLayer()
     private let backWaveSubLayer: CAShapeLayer = CAShapeLayer()
+    private let gradientSubLayer: CAGradientLayer = CAGradientLayer()
     
     private var timer = Timer()
     
@@ -48,17 +50,22 @@ public class WaveAnimationView: UIView {
     
     open var waveHeight: CGFloat = 15.0 //3.0 .. about 50.0 are standard.
     open var waveDelay: CGFloat = 300.0 //0.0 .. about 500.0 are standard.
+    open var waveZoom: CGFloat = 1.0
+
     
     open var frontColor: UIColor!
     open var backColor: UIColor!
-    
-    
+  open var gradientToColor: UIColor!
+  
+    open var isAnimating: Bool!
+
     private override init(frame: CGRect) {
         self.width = frame.width
         self.height = frame.height
         self.xAxis = floor(height/2)
         self.yAxis = 0.0
         self.progress = 0.5
+        self.isAnimating = false
         super.init(frame: frame)
     }
     
@@ -74,6 +81,15 @@ public class WaveAnimationView: UIView {
         self.frontColor = frontColor
         self.backColor = backColor
     }
+  
+  //Possible to set fillColors separately.
+  public convenience init(frame: CGRect, frontColor: UIColor, backColor: UIColor, gradientToColor: UIColor) {
+      self.init(frame: frame)
+      self.frontColor = frontColor
+      self.backColor = backColor
+    self.gradientToColor = gradientToColor;
+  }
+
     
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -86,7 +102,7 @@ public class WaveAnimationView: UIView {
     }
     
     //0.0 .. 1.0 are avaliable
-    open func setProgress(_ point: Float) {
+    open func setWaveProgress(_ point: Float) {
         let setPoint:CGFloat = CGFloat(min(max(point, 0),1))
         
         self.progress = Float(setPoint)
@@ -95,13 +111,21 @@ public class WaveAnimationView: UIView {
     
     //Start wave Animation
     open func startAnimation() {
+      if ( !self.isAnimating )
+      {
         timer = Timer.scheduledTimer(timeInterval: 0.035, target: self, selector: #selector(waveAnimation), userInfo: nil, repeats: true)
+        self.isAnimating = true;
+      }
     }
     
     //MARK: Please be sure to call this method at ViewDidDisAppear or deinit in ViewController.
     //If it isn't called, Memory Leaks occurs by Timer
     open func stopAnimation() {
+      if ( self.isAnimating )
+      {
         timer.invalidate()
+        self.isAnimating = false;
+      }
     }
     
     @objc private func waveAnimation() {
@@ -125,16 +149,38 @@ public class WaveAnimationView: UIView {
         path.addLine(to: CGPoint(x: width+10, y: height))
         path.addLine(to: CGPoint(x: 0, y: height))
         path.close()
-        
+
+      if ( layer == frontWaveLayer )
+      {
         layer.fillColor = color.cgColor
+      }
+      else
+      {
+        layer.strokeColor = color.cgColor;
+      }
         layer.path = path.cgPath
         self.layer.insertSublayer(layer, at: 0)
+      
+      if ( delay != 0 && self.gradientToColor != nil )
+      {
+        //let y:CGFloat = CGFloat(self.progress) * self.frame.height;
+        gradientSubLayer.frame = CGRect(x: 0, y: 0, width: self.frame.width, height:self.frame.height)
+        gradientSubLayer.colors = [color.cgColor, self.gradientToColor.cgColor]
+        gradientSubLayer.startPoint = CGPoint(x: 0, y: 1.0 - CGFloat(self.progress))
+        gradientSubLayer.endPoint = CGPoint(x: 0, y: 1)
+
+        let shapeMask = CAShapeLayer()
+        shapeMask.path = path.cgPath
+        gradientSubLayer.mask = shapeMask
+
+        self.layer.addSublayer(gradientSubLayer)
+      }
     }
     
     private func drawSin(path: UIBezierPath, time: CGFloat, delay: CGFloat) {
         
         let unit:CGFloat = 100.0
-        let zoom:CGFloat = 1.0
+        let zoom:CGFloat = waveZoom
         var x = time
         var y = sin(x)/zoom
         let start = CGPoint(x: yAxis, y: unit*y+xAxis)
