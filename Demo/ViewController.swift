@@ -35,7 +35,7 @@ class ViewController: UIViewController {
     
     @IBAction func slide(_ sender: UISlider) {
         
-        wave.setProgress(sender.value)
+        wave.progress = sender.value
         
         print("aa",sender.value)
         print("bb",wave.progress)
