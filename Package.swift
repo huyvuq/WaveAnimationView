@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "WaveAnimationView",
+    defaultLocalization: "en",
     platforms: [.iOS(.v13)],
     products: [
         .library(name: "WaveAnimationView", targets: ["WaveAnimationView"]),
